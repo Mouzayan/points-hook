@@ -22,17 +22,17 @@ import "forge-std/console.sol";
 import {PointsHook} from "../src/PointsHook.sol";
 
 contract TestPointsHook is Test, Deployers {
-	using CurrencyLibrary for Currency;
+    using CurrencyLibrary for Currency;
 
     MockERC20 token; // our token to use in the ETH-TOKEN pool
 
-	// Native tokens are represented by address(0)
-	Currency ethCurrency = Currency.wrap(address(0));
-	Currency tokenCurrency;
+    // Native tokens are represented by address(0)
+    Currency ethCurrency = Currency.wrap(address(0));
+    Currency tokenCurrency;
 
-	PointsHook hook;
+    PointsHook hook;
 
-	function setUp() public {
+    function setUp() public {
         // Deploy PoolManager and Router contracts
         deployFreshManagerAndRouters();
 
@@ -44,14 +44,8 @@ contract TestPointsHook is Test, Deployers {
         token.mint(address(this), 1000 ether);
 
         // Deploy hook to an address that has the proper flags set
-        uint160 flags = uint160(
-            Hooks.AFTER_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG
-        );
-        deployCodeTo(
-            "PointsHook.sol",
-            abi.encode(manager, "Points Token", "TEST_POINTS"),
-            address(flags)
-        );
+        uint160 flags = uint160(Hooks.AFTER_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG);
+        deployCodeTo("PointsHook.sol", abi.encode(manager, "Points Token", "TEST_POINTS"), address(flags));
 
         // Deploy our hook
         hook = PointsHook(address(flags));
@@ -62,7 +56,7 @@ contract TestPointsHook is Test, Deployers {
         token.approve(address(modifyLiquidityRouter), type(uint256).max);
 
         // Initialize a pool
-        (key, ) = initPool(
+        (key,) = initPool(
             ethCurrency, // Currency 0 = ETH
             tokenCurrency, // Currency 1 = TOKEN
             hook, // Hook Contract
@@ -81,16 +75,9 @@ contract TestPointsHook is Test, Deployers {
         uint160 sqrtPriceAtTickUpper = TickMath.getSqrtPriceAtTick(60);
 
         uint256 ethToAdd = 0.1 ether;
-        uint128 liquidityDelta = LiquidityAmounts.getLiquidityForAmount0(
-            sqrtPriceAtTickLower,
-            SQRT_PRICE_1_1,
-            ethToAdd
-        );
-        uint256 tokenToAdd = LiquidityAmounts.getAmount1ForLiquidity(
-            sqrtPriceAtTickLower,
-            SQRT_PRICE_1_1,
-            liquidityDelta
-        );
+        uint128 liquidityDelta = LiquidityAmounts.getLiquidityForAmount0(sqrtPriceAtTickLower, SQRT_PRICE_1_1, ethToAdd);
+        uint256 tokenToAdd =
+            LiquidityAmounts.getAmount1ForLiquidity(sqrtPriceAtTickLower, SQRT_PRICE_1_1, liquidityDelta);
 
         modifyLiquidityRouter.modifyLiquidity{value: ethToAdd}(
             key,
@@ -122,18 +109,12 @@ contract TestPointsHook is Test, Deployers {
                 amountSpecified: -0.001 ether, // Exact input for output swap
                 sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
             }),
-            PoolSwapTest.TestSettings({
-                takeClaims: false,
-                settleUsingBurn: false
-            }),
+            PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false}),
             hookData
         );
 
         uint256 pointsBalanceAfterSwap = hook.balanceOf(address(this));
 
-        assertEq(
-            pointsBalanceAfterSwap - pointsBalanceAfterAddLiquidity,
-            2 * 10 ** 14
-        );
+        assertEq(pointsBalanceAfterSwap - pointsBalanceAfterAddLiquidity, 2 * 10 ** 14);
     }
 }
